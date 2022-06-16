@@ -1,6 +1,6 @@
 # Splunk Logging for Java
 
-#### Version 1.11.5
+#### Version 1.7.6
 
 Splunk logging for Java enables you to log events to HTTP Event Collector or to a TCP input on a Splunk Enterprise instance within your Java applications. You can use three major Java logging frameworks: [Logback](http://logback.qos.ch), [Log4j 2](http://logging.apache.org/log4j/2.x/), and [java.util.logging](https://docs.oracle.com/javase/7/docs/api/java/util/logging/package-summary.html). Splunk logging for Java is also enabled for [Simple Logging Facade for Java (SLF4J)](http://www.slf4j.org).
 
@@ -18,24 +18,18 @@ Splunk logging for Java provides:
 
 ### Requirements
 
-Here's what you need to get going with Splunk logging for Java.
+Here's what you need to get going with the Splunk SDK for Java.
 
 #### Splunk
 
 If you haven't already installed Splunk, download it
 [here](http://www.splunk.com/download). For more about installing and running
-Splunk and system requirements, see [Installing & Running Splunk](http://dev.splunk.com/view/SP-CAAADRV). Splunk logging for Java is tested with Splunk Enterprise 8.0 and 8.2.0.
+Splunk and system requirements, see
+[Installing & Running Splunk](http://dev.splunk.com/view/SP-CAAADRV).
 
-#### Java
+#### Java 
 
-You'll need Java version 8 or higher, from [OpenJDK](https://openjdk.java.net) or [Oracle](https://www.oracle.com/technetwork/java).
-
-#### Logging frameworks
-
-If you're using the Log4j 2, Simple Logging Facade for Java (SLF4J), or Logback logging frameworks in conjunction with Splunk logging for Java there are additional compatibility requirements. For more about logging framework requirements, see [Enable logging to HEC](https://dev.splunk.com/enterprise/docs/devtools/java/logging-java/howtouseloggingjava/enableloghttpjava/) and [Enable logging to TCP inputs](https://dev.splunk.com/enterprise/docs/devtools/java/logging-java/howtouseloggingjava/enablelogtcpjava). These frameworks require:
-* Log4j version 2.17.2
-* SLF4J version 1.7.36
-* Logback version 1.2.11
+You'll need Java version 7 or higher, from [OpenJDK](https://openjdk.java.net) or [Oracle](https://www.oracle.com/technetwork/java).
 
 ## Documentation and resources
 
@@ -43,7 +37,7 @@ If you're using the Log4j 2, Simple Logging Facade for Java (SLF4J), or Logback 
   [Overview of Splunk logging for Java](http://dev.splunk.com/goto/sdk-slj).
 
 * For reference documentation, see the
-  [Splunk logging for Java API reference](https://docs.splunk.com/DocumentationStatic/JavaLogging/1.8.0/index.html).
+  [Splunk logging for Java API reference](https://docs.splunk.com/DocumentationStatic/JavaLogging/1.6.2/index.html).
 
 * For all things developer with Splunk, see the
   [Splunk Developer Portal](http://dev.splunk.com).
@@ -74,8 +68,4 @@ The Splunk logging for Java is community-supported.
 
 ## Contact us
 
-You can [contact support][contact] if you have Splunk related questions.
-
 You can reach the Dev Platform team at [devinfo@splunk.com](mailto:devinfo@splunk.com).
-
-[contact]:                  https://www.splunk.com/en_us/support-and-services.html

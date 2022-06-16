@@ -1,34 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.splunk.logging</groupId>
+    <groupId>com.toasttab</groupId>
     <artifactId>splunk-library-javalogging</artifactId>
-
-    <version>1.11.5</version>
-
+    <version>1.7.6</version>
     <packaging>jar</packaging>
 
     <name>Splunk Logging for Java</name>
-    <url>https://dev.splunk.com/goto/sdk-slj</url>
+    <url>http://dev.splunk.com/goto/sdk-slj</url>
 
-    <description>
-        Library for structured, semantic logging of Common Information Model compliant events, meant for use with SLF4J.
+    <description>Library for structured, semantic logging of Common Information Model compliant events, meant for use
+        with SLF4J.
     </description>
 
     <properties>
         <maven.resources.overwrite>true</maven.resources.overwrite>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <!-- CVE-2021-44228: https://nvd.nist.gov/vuln/detail/CVE-2021-44228 -->
-        <!-- CVE-2021-45046: https://nvd.nist.gov/vuln/detail/CVE-2021-45046 -->
-        <!-- CVE-2021-45105 (Log4j<2.17.0): https://nvd.nist.gov/vuln/detail/CVE-2021-45105 -->
-        <!-- CVE-2021-44832 (Log4j<2.17.1): https://nvd.nist.gov/vuln/detail/CVE-2021-44832 -->
-        <log4j2.version>2.17.2</log4j2.version>
-        
-        <!-- CVE-2021-42550: https://nvd.nist.gov/vuln/detail/CVE-2021-42550 -->
-        <logback.version>1.2.11</logback.version>
     </properties>
     <profiles>
         <profile>
@@ -40,24 +30,11 @@
                 <plugins>
                     <plugin>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <version>3.8.1</version>
+                        <version>3.1</version>
                         <configuration>
-                            <source>8</source>
-                            <target>8</target>
+                            <source>1.6</source>
+                            <target>1.6</target>
                         </configuration>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>3.2.0</version>
-                        <executions>
-                            <execution>
-                                <id>attach-sources</id>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>biz.aQute.bnd</groupId>
@@ -84,7 +61,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.22.2</version>
+                        <version>2.18.1</version>
                         <configuration>
                             <includes>
                                 <include>**/*.class</include>
@@ -98,14 +75,12 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.3.0</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
                                 <configuration>
-                                    <additionalOptions>
-                                        <additionalOption>-Xdoclint:syntax</additionalOption>
-                                    </additionalOptions>
+                                    <additionalparam>-Xdoclint:syntax</additionalparam>
+                                    <additionalOptions>-Xdoclint:syntax</additionalOptions>
                                 </configuration>
                                 <goals>
                                     <goal>jar</goal>
@@ -123,7 +98,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.22.2</version>
+                        <version>2.18.1</version>
                         <configuration>
                             <includes>
                                 <include>**/HttpEventCollector_*.class</include>
@@ -140,7 +115,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.22.2</version>
+                        <version>2.18.1</version>
                         <configuration>
                             <includes>
                                 <include>**/HttpEventCollectorUnitTest.class</include>
@@ -155,9 +130,17 @@
             <build>
                 <plugins>
                     <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <version>3.1</version>
+                        <configuration>
+                            <source>1.6</source>
+                            <target>1.6</target>
+                        </configuration>
+                    </plugin>
+                    <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.22.2</version>
+                        <version>2.18.1</version>
                         <configuration>
                             <includes>
                                 <include>**/HttpLoggerStressTest.class</include>
@@ -174,136 +157,87 @@
         <repository>
             <id>splunk-artifactory</id>
             <name>Splunk Releases</name>
-            <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
+            <url>https://artifactory.eng.toasttab.com/artifactory/simple/android-third-party</url>
         </repository>
     </repositories>
-    <distributionManagement>
-        <repository>
-            <id>splunk-artifactory</id>
-            <name>Splunk Releases</name>
-            <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
-        </repository>
-    </distributionManagement>
 
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <version>4.11</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.36</version>
+            <version>1.7.5</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
+            <version>1.1.11</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
-            <version>${logback.version}</version>
+            <version>1.1.11</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-access</artifactId>
-            <version>${logback.version}</version>
+            <version>1.1.11</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>4.9.3</version>
+            <version>3.12.1</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
-            <scope>provided</scope>
-            <version>${log4j2.version}</version>
+            <version>2.10.0</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
-            <scope>provided</scope>
-            <version>${log4j2.version}</version>
+            <version>2.10.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.json-simple</groupId>
+            <artifactId>json-simple</artifactId>
+            <version>1.1.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.splunk</groupId>
             <artifactId>splunk</artifactId>
-            <version>1.6.5.0</version>
+            <version>1.5.0.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.9.0</version>
+            <version>2.2.4</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.12.0</version>
+            <version>3.0</version>
             <scope>test</scope>
         </dependency>
 
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                        <configuration>
-                            <source>8</source>
-                            <additionalOptions>
-                                <additionalOption>-Xdoclint:syntax</additionalOption>
-                            </additionalOptions>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 
     <licenses>
         <license>

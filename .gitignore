@@ -2,8 +2,6 @@
 *~
 .idea
 target
-.vscode
-.factorypath
 *.iml
 pom.xml.old
 pom.xml.orig
