@@ -155,6 +155,7 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
 
         MarkerConverter c = new MarkerConverter();
         if (this.started) {
+            logger.info("send batch")
             this.sender.send(
             		event.getTimeStamp(),
                     event.getLevel().toString(),
