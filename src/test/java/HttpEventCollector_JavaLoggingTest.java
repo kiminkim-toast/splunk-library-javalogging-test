@@ -16,12 +16,12 @@
 
 import java.util.*;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.splunk.logging.EventBodyBuilder;
 import com.splunk.logging.HttpEventCollectorErrorHandler;
 import com.splunk.logging.HttpEventCollectorEventInfo;
 
-import org.apache.commons.lang3.StringUtils;
+import com.splunk.logging.HttpEventCollectorSender;
+import org.json.simple.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -31,7 +31,7 @@ public final class HttpEventCollector_JavaLoggingTest {
 
     private String httpEventCollectorName = "JavaLoggingTest";
     List<List<HttpEventCollectorEventInfo>> errors = new ArrayList<List<HttpEventCollectorEventInfo>>();
-    List<Exception> logEx = new ArrayList<>();
+    List<HttpEventCollectorErrorHandler.ServerErrorException> logEx = new ArrayList<HttpEventCollectorErrorHandler.ServerErrorException>();
 
     /**
      * sending a message via httplogging using java.logging to splunk
@@ -236,10 +236,12 @@ public final class HttpEventCollector_JavaLoggingTest {
         errors.clear();
         logEx.clear();
         //define error callback
-        HttpEventCollectorErrorHandler.onError((data, ex) -> {
-            synchronized (errors) {
-                errors.add(data);
-                logEx.add(ex);
+        HttpEventCollectorErrorHandler.onError(new HttpEventCollectorErrorHandler.ErrorCallback() {
+            public void error(final List<HttpEventCollectorEventInfo> data, final Exception ex) {
+                synchronized (errors) {
+                    errors.add(data);
+                    logEx.add((HttpEventCollectorErrorHandler.ServerErrorException) ex);
+                }
             }
         });
 
@@ -280,10 +282,8 @@ public final class HttpEventCollector_JavaLoggingTest {
         System.out.println("======print logEx");
         System.out.println(logEx.toString());
         System.out.println("======finish print logEx");
-        // in this case expect a valid http reply with a json error message
-        HttpEventCollectorErrorHandler.ServerErrorException serverErrorException = (HttpEventCollectorErrorHandler.ServerErrorException) logEx.get(1);
-        Assert.assertEquals("Invalid token", serverErrorException.getErrorText());
-        Assert.assertEquals(4, serverErrorException.getErrorCode());
+        Assert.assertEquals("Invalid token", logEx.get(1).getErrorText());
+        Assert.assertEquals(4, logEx.get(1).getErrorCode());
 
 
         for (List<HttpEventCollectorEventInfo> infos : errors) {
@@ -304,10 +304,12 @@ public final class HttpEventCollector_JavaLoggingTest {
         logEx.clear();
 
         //define error callback
-        HttpEventCollectorErrorHandler.onError((data, ex) -> {
-            synchronized (errors) {
-                errors.add(data);
-                logEx.add(ex);
+        HttpEventCollectorErrorHandler.onError(new HttpEventCollectorErrorHandler.ErrorCallback() {
+            public void error(final List<HttpEventCollectorEventInfo> data, final Exception ex) {
+                synchronized (errors) {
+                    errors.add(data);
+                    logEx.add((HttpEventCollectorErrorHandler.ServerErrorException) ex);
+                }
             }
         });
 
@@ -341,7 +343,7 @@ public final class HttpEventCollector_JavaLoggingTest {
         Assert.assertEquals(1, errors.size());
 
         System.out.println(logEx.toString());
-        if (!StringUtils.containsAny(logEx.toString(), "Failed to connect to", "Remote host terminated the handshake", "Connection reset"))
+        if (!(logEx.toString().contains("Connection refused") || logEx.toString().contains("Connection closed")))
             Assert.fail(String.format("Unexpected error message '%s'", logEx.toString()));
     }
 
@@ -448,7 +450,7 @@ public final class HttpEventCollector_JavaLoggingTest {
     }
 
     /**
-     * sending a message using user-defined EventBodySerializer through java.logging to splunk
+     * sending a message using user-defined EventBodyBuilder through java.logging to splunk
      */
     @Test
     public void canSendEventUsingJavaLoggingWithUserEventBodySerializer() throws Exception {
@@ -465,7 +467,7 @@ public final class HttpEventCollector_JavaLoggingTest {
         TestUtil.resetJavaLoggingConfiguration("logging_template.properties", "logging.properties", userInputs);
 
         Date date = new Date();
-        String jsonMsg = String.format("EventDate:%s, EventMsg:test event for java logging With User EventBodySerializer", date.toString());
+        String jsonMsg = String.format("EventDate:%s, EventMsg:test event for java logging With User EventBodyBuilder", date.toString());
 
         Logger logger = Logger.getLogger(loggerName);
         logger.info(jsonMsg);
@@ -475,33 +477,6 @@ public final class HttpEventCollector_JavaLoggingTest {
         TestUtil.deleteHttpEventCollectorToken(httpEventCollectorName);
     }
 
-    /**
-     * sending a message using user-defined EventHeaderSerializer through java.logging to splunk
-     */
-    @Test
-    public void canSendEventUsingJavaLoggingWithUserEventHeaderSerializer() throws Exception {
-        TestUtil.enableHttpEventCollector();
-
-        String token = TestUtil.createHttpEventCollectorToken(httpEventCollectorName);
-
-        String loggerName = "splunkLoggerHeaderSerializer";
-        HashMap<String, String> userInputs = new HashMap<String, String>();
-        userInputs.put("user_httpEventCollector_token", token);
-        userInputs.put("user_logger_name", loggerName);
-        userInputs.put("user_eventHeaderSerializer", "TestEventHeaderSerializer");
-
-        TestUtil.resetJavaLoggingConfiguration("logging_template.properties", "logging.properties", userInputs);
-
-        Date date = new Date();
-        String jsonMsg = String.format("EventDate:%s, EventMsg:test event for java logging With User EventHeaderSerializer", date.toString());
-
-        Logger logger = Logger.getLogger(loggerName);
-        logger.info(jsonMsg);
-
-        TestUtil.verifyOneAndOnlyOneEventSentToSplunk("source=user_source");
-
-        TestUtil.deleteHttpEventCollectorToken(httpEventCollectorName);
-    }
 
     @SuppressWarnings("unchecked")
     private void canSendJsonEventUsingUtilLoggerWithSourceType(final String sourceType) throws Exception {
@@ -517,21 +492,21 @@ public final class HttpEventCollector_JavaLoggingTest {
 
         final long timeMillsec = new Date().getTime();
 
-        final JsonObject jsonObject = new JsonObject();
-        jsonObject.add("transactionId", new JsonPrimitive("11"));
-        jsonObject.add("userId", new JsonPrimitive("21"));
-        jsonObject.add("eventTimestamp", new JsonPrimitive(timeMillsec));
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("transactionId", "11");
+        jsonObject.put("userId", "21");
+        jsonObject.put("eventTimestamp", timeMillsec);
 
         final Logger logger = Logger.getLogger(loggerName);
 
         // Test with a json event message
-        jsonObject.add("severity", new JsonPrimitive("info"));
+        jsonObject.put("severity", "info");
         final String infoJson = jsonObject.toString();
         logger.info(infoJson);
         msgs.add(infoJson);
 
         // Test with a text event message
-        jsonObject.add("severity", new JsonPrimitive("info"));
+        jsonObject.put("severity", "info");
         final String infoText = String.format("{EventTimestamp:%s, EventMsg:'this is a text info for java util logger}", timeMillsec);
         logger.info(infoText);
         msgs.add(infoText);

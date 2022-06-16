@@ -21,13 +21,13 @@ import java.util.LinkedHashMap;
 import java.util.regex.Pattern;
 
 /**
- * <code>SplunkCimLogEvent</code> encapsulates the best practice logging semantics recommended by Splunk.
+ * <tt>SplunkCimLogEvent</tt> encapsulates the best practice logging semantics recommended by Splunk.
  *
  * It produces events of key, value pairs, properly formatted and quoted for logging with any of Java's standard
  * logging libraries (logback, log4j, java.util.logging, etc.) and indexing by Splunk. The class has convenience
  * methods to set the fields defined in the standard Splunk Common Information Model.
  *
- * <code>SplunkCimLogEvent</code> adds no timestamp to its fields, leaving you free to configure whatever timestamp
+ * <tt>SplunkCimLogEvent</tt> adds no timestamp to its fields, leaving you free to configure whatever timestamp
  * format you prefer in your logging configuration.
  *
  * <code>
@@ -69,9 +69,9 @@ public class SplunkCimLogEvent {
 
     /**
      * Add a key value pair. The value may be any Java object which returns a sensible
-     * result from its <code>toString</code> method.
+     * result from its <tt>toString</tt> method.
      *
-     * For logging exceptions, consider using <code>addThrowableWithStacktrace</code> instead.
+     * For logging exceptions, consider using <tt>addThrowableWithStacktrace</tt> instead.
      *
      * @param key key
      * @param value value
@@ -92,7 +92,7 @@ public class SplunkCimLogEvent {
     }
 
     /**
-     * Logs an exception with the first <code>stacktraceDepth</code> elements of its stacktrace nicely
+     * Logs an exception with the first <tt>stacktraceDepth</tt> elements of its stacktrace nicely
      * formatted for indexing and searching by Splunk,
      *
      *
@@ -114,9 +114,7 @@ public class SplunkCimLogEvent {
             sb.append(elements[depth].toString());
         }
 
-        if (stacktraceDepth > 0) {
-            addField(THROWABLE_STACKTRACE_ELEMENTS, sb.toString());
-        }
+        addField(THROWABLE_STACKTRACE_ELEMENTS, sb.toString());
     }
 
     private static final Pattern DOUBLE_QUOTE = Pattern.compile("\"");
@@ -131,7 +129,7 @@ public class SplunkCimLogEvent {
             } else {
                 first = false;
             }
-            String value = String.valueOf(entries.get(key));
+            String value = entries.get(key).toString();
 
             // Escape any " that appear in the key or value.
             key = DOUBLE_QUOTE.matcher(key).replaceAll("\\\\\"");

@@ -66,8 +66,10 @@ public class HttpEventCollectorResendMiddleware
 
         @Override
         public void completed(int statusCode, final String reply) {
-            // if non-200, resend wouldn't help, delegate to previous callback
-            prevCallback.completed(statusCode, reply);
+            if (statusCode != 200) {
+                // resend wouldn't help - report error
+                prevCallback.failed(new HttpEventCollectorErrorHandler.ServerErrorException(reply));
+            }
         }
 
         @Override

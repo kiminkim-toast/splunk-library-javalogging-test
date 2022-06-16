@@ -33,10 +33,10 @@ public class HttpEventCollectorEventInfo {
     private final Map<String, String> properties;
     private final String exception_message;
     private final Serializable marker;
+    private final Object[] arguments;
 
     /**
      * Create a new HttpEventCollectorEventInfo container
-     * @param timeMsSinceEpoch in milliseconds since "unix epoch"
      * @param severity of event
      * @param message is an event content
      * @param logger_name name of the logger
@@ -44,18 +44,19 @@ public class HttpEventCollectorEventInfo {
      * @param properties additional properties for this event
      * @param exception_message text of an exception to log
      * @param marker event marker
+     * @param arguments in the event
      */
     public HttpEventCollectorEventInfo(
-    		final long timeMsSinceEpoch,
             final String severity,
             final String message,
             final String logger_name,
             final String thread_name,
             final Map<String, String> properties,
             final String exception_message,
-            final Serializable marker
+            final Serializable marker,
+            final Object[] arguments
     ) {
-        this.time = timeMsSinceEpoch / 1000.0;
+        this.time = System.currentTimeMillis() / 1000.0;
         this.severity = severity;
         this.message = message;
         this.logger_name = logger_name;
@@ -63,6 +64,7 @@ public class HttpEventCollectorEventInfo {
         this.properties = properties;
         this.exception_message = exception_message;
         this.marker = marker;
+        this.arguments = arguments;
     }
 
     /**
@@ -110,4 +112,9 @@ public class HttpEventCollectorEventInfo {
      * @return event marker
      */
     public Serializable getMarker() { return marker; }
+
+    /**
+     * @return event args
+     */
+    public Object[] getArguments() { return arguments; }
 }

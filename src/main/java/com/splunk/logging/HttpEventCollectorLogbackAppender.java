@@ -1,4 +1,4 @@
-package com.toasttab.android.devicemanagement;
+package com.splunk.logging;
 /*
  * Copyright 2013-2015 Splunk, Inc.
  *
@@ -19,11 +19,6 @@ import ch.qos.logback.classic.pattern.MarkerConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
-import com.splunk.logging.HttpEventCollectorErrorHandler;
-import com.splunk.logging.HttpEventCollectorMiddleware;
-import com.splunk.logging.HttpEventCollectorResendMiddleware;
-import com.splunk.logging.HttpEventCollectorSender;
-import com.splunk.logging.hec.MetadataTags;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -38,6 +33,7 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
     private boolean _includeThreadName = true;
     private boolean _includeMDC = true;
     private boolean _includeException = true;
+    private boolean _includeArgs = true;
 
     private String _source;
     private String _sourcetype;
@@ -50,49 +46,37 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
     private String _type;
     private String _disableCertificateValidation;
     private String _middleware;
-    private String _eventBodySerializer;
-    private String _eventHeaderSerializer;
-    private String _errorCallback;
+    private String _eventBodyBuilder;
     private long _batchInterval = 0;
     private long _batchCount = 0;
     private long _batchSize = 0;
     private String _sendMode;
     private long _retriesOnError = 0;
-    private Map<String, String> _metadata = new HashMap<>();
-    private boolean _batchingConfigured = false;
-
-
-    private HttpEventCollectorSender.TimeoutSettings timeoutSettings = new HttpEventCollectorSender.TimeoutSettings();
 
     @Override
     public void start() {
         if (started)
             return;
 
-        Map<String, String> metadata = new HashMap<>(_metadata);
         // init events sender
+        Dictionary<String, String> metadata = new Hashtable<String, String>();
         if (_host != null)
-            metadata.put(MetadataTags.HOST, _host);
+            metadata.put(HttpEventCollectorSender.MetadataHostTag, _host);
 
         if (_index != null)
-            metadata.put(MetadataTags.INDEX, _index);
+            metadata.put(HttpEventCollectorSender.MetadataIndexTag, _index);
 
         if (_source != null)
-            metadata.put(MetadataTags.SOURCE, _source);
+            metadata.put(HttpEventCollectorSender.MetadataSourceTag, _source);
 
         if (_sourcetype != null)
-            metadata.put(MetadataTags.SOURCETYPE, _sourcetype);
-
+            metadata.put(HttpEventCollectorSender.MetadataSourceTypeTag, _sourcetype);
+        
         if (_messageFormat != null)
-            metadata.put(MetadataTags.MESSAGEFORMAT, _messageFormat);
-
-        // This should have been caught at configuration time, but double-check at start
-        if ("raw".equalsIgnoreCase(_type) && _batchingConfigured) {
-            throw new IllegalArgumentException("Batching configuration and sending type of raw are incompatible.");
-        }
+            metadata.put(HttpEventCollectorSender.MetadataMessageFormatTag, _messageFormat);
 
         this.sender = new HttpEventCollectorSender(
-                _url, _token, _channel, _type, _batchInterval, _batchCount, _batchSize, _sendMode, metadata, timeoutSettings);
+                _url, _token, _channel, _type, _batchInterval, _batchCount, _batchSize, _sendMode, metadata);
 
         // plug a user middleware
         if (_middleware != null && !_middleware.isEmpty()) {
@@ -101,20 +85,10 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
             } catch (Exception ignored) {}
         }
 
-        if (_eventBodySerializer != null && !_eventBodySerializer.isEmpty()) {
+        if (_eventBodyBuilder != null && !_eventBodyBuilder.isEmpty()) {
             try {
-                this.sender.setEventBodySerializer((EventBodySerializer) Class.forName(_eventBodySerializer).newInstance());
+                this.sender.setEventBodyBuilder((EventBodyBuilder) Class.forName(_eventBodyBuilder).newInstance());
             } catch (final Exception ignored) {}
-        }
-
-        if (_eventHeaderSerializer != null && !_eventHeaderSerializer.isEmpty()) {
-            try {
-                this.sender.setEventHeaderSerializer((EventHeaderSerializer) Class.forName(_eventHeaderSerializer).newInstance());
-            } catch (final Exception ignored) {}
-        }
-
-        if (_errorCallback != null && !_errorCallback.isEmpty()) {
-            HttpEventCollectorErrorHandler.registerClassName(_errorCallback);
         }
 
         // plug resend middleware
@@ -127,12 +101,6 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
         }
 
         super.start();
-    }
-
-    public void flush() {
-        if (started) {
-            sender.flush();
-        }
     }
 
     @Override
@@ -163,14 +131,14 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
             Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
             logger.info("send batch");
             this.sender.send(
-                    event.getTimeStamp(),
                     event.getLevel().toString(),
                     _layout.doLayout((E) event),
                     _includeLoggerName ? event.getLoggerName() : null,
                     _includeThreadName ? event.getThreadName() : null,
                     _includeMDC ? event.getMDCPropertyMap() : null,
                     (!_includeException || event.getThrowableProxy() == null) ? null : event.getThrowableProxy().getMessage(),
-                    c.convert(event)
+                    c.convert(event),
+                    _includeArgs ? event.getArgumentArray() : null
             );
         }
     }
@@ -213,18 +181,6 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
 
     public void setType(String type) {
         this._type = type;
-        if ("raw".equalsIgnoreCase(type)) {
-            validateNotBatchedAndRaw();
-            this._batchCount = 1; // Enforce sending on every event
-        }
-    }
-
-    private void validateNotBatchedAndRaw() {
-        if ("raw".equalsIgnoreCase(_type)) {
-            if (_batchingConfigured) {
-                throw new IllegalArgumentException("Batching configuration and sending type of raw are incompatible.");
-            }
-        }
     }
 
     public String getType() {
@@ -271,6 +227,14 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
         this._includeException = includeException;
     }
 
+    public boolean getIncludeArgs() {
+        return _includeArgs;
+    }
+
+    public void setIncludeArgs(boolean includeArgs) {
+        this._includeArgs = includeArgs;
+    }
+
     public void setSource(String source) {
         this._source = source;
     }
@@ -286,7 +250,7 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
     public String getSourcetype() {
         return this._sourcetype;
     }
-
+    
     public void setMessageFormat(String messageFormat) {
         this._messageFormat = messageFormat;
     }
@@ -311,20 +275,8 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
         return this._index;
     }
 
-    public void addMetadata(String tag, String value){
-        this._metadata.put(tag,value);
-    }
-
-    public String getEventBodySerializer() {
-        return _eventBodySerializer;
-    }
-
-    public String getEventHeaderSerializer() {
-        return _eventHeaderSerializer;
-    }
-
-    public String getErrorHandler(String errorHandlerClass) {
-        return this._errorCallback;
+    public String getEventBodyBuilder() {
+        return _eventBodyBuilder;
     }
 
     public void setDisableCertificateValidation(String disableCertificateValidation) {
@@ -333,20 +285,14 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
 
     public void setbatch_size_count(String value) {
         _batchCount = parseLong(value, HttpEventCollectorSender.DefaultBatchCount);
-        _batchingConfigured = true;
-        validateNotBatchedAndRaw();
     }
 
     public void setbatch_size_bytes(String value) {
         _batchSize = parseLong(value, HttpEventCollectorSender.DefaultBatchSize);
-        _batchingConfigured = true;
-        validateNotBatchedAndRaw();
     }
 
     public void setbatch_interval(String value) {
         _batchInterval = parseLong(value, HttpEventCollectorSender.DefaultBatchInterval);
-        _batchingConfigured = true;
-        validateNotBatchedAndRaw();
     }
 
     public void setretries_on_error(String value) {
@@ -365,61 +311,8 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
         return _disableCertificateValidation;
     }
 
-    public void setEventBodySerializer(String eventBodySerializer) {
-        this._eventBodySerializer = eventBodySerializer;
-    }
-
-    public void setEventHeaderSerializer(String eventHeaderSerializer) {
-        this._eventHeaderSerializer = eventHeaderSerializer;
-    }
-
-    public void setErrorCallback(String errorHandlerClass) {
-        this._errorCallback = errorHandlerClass;
-    }
-
-    public String getErrorCallback() {
-        return this._errorCallback;
-    }
-
-    public void setConnectTimeout(long milliseconds) {
-        this.timeoutSettings.connectTimeout = milliseconds;
-    }
-
-    public long getConnectTimeout(long milliseconds) {
-        return this.timeoutSettings.connectTimeout = milliseconds;
-    }
-
-    public void setCallTimeout(long milliseconds) {
-        this.timeoutSettings.callTimeout = milliseconds;
-    }
-
-    public long getCallTimeout(long milliseconds) {
-        return this.timeoutSettings.callTimeout = milliseconds;
-    }
-
-
-    public void setReadTimeout(long milliseconds) {
-        this.timeoutSettings.readTimeout = milliseconds;
-    }
-
-    public long getReadTimeout(long milliseconds) {
-        return this.timeoutSettings.readTimeout = milliseconds;
-    }
-
-    public void setWriteTimeout(long milliseconds) {
-        this.timeoutSettings.writeTimeout = milliseconds;
-    }
-
-    public long getWriteTimeout(long milliseconds) {
-        return this.timeoutSettings.writeTimeout = milliseconds;
-    }
-
-    public void setTerminationTimeout(long milliseconds) {
-        this.timeoutSettings.terminationTimeout = milliseconds;
-    }
-
-    public long getTerminationTimeout(long milliseconds) {
-        return this.timeoutSettings.terminationTimeout = milliseconds;
+    public void setEventBodyBuilder(String eventBodyBuilder) {
+        this._eventBodyBuilder = eventBodyBuilder;
     }
 
     private static long parseLong(String string, int defaultValue) {

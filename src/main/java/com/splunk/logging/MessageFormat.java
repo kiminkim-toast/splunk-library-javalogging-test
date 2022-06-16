@@ -1,9 +1,6 @@
 package com.splunk.logging;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
+import org.json.simple.JSONValue;
 
 /**
  * 
@@ -60,13 +57,13 @@ enum MessageFormat {
      * @return the parsed message JSON object or input message if parsing fails
      */
     private Object parseJsonEventMessage(final String message) {
-        Gson gson = new GsonBuilder().create();
-        try {
-            return gson.fromJson(message, JsonObject.class);
-        } catch (JsonSyntaxException e) {
+        final Object jsonObject = JSONValue.parse(message);
+        if (jsonObject == null) {
             // If JSON parsing failed then it is likely a text message or a malformed JSON message.
             // Return input message string in such an event.
             return message;
+        } else {
+            return jsonObject;
         }
     }
 

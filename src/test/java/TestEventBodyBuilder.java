@@ -14,19 +14,28 @@
  * under the License.
  */
 
-import com.splunk.logging.hec.MetadataTags;
-import com.splunk.logging.EventHeaderSerializer;
+import com.splunk.logging.EventBodyBuilder;
+import com.splunk.logging.HttpEventCollectorErrorHandler;
 import com.splunk.logging.HttpEventCollectorEventInfo;
+import org.json.simple.JSONObject;
+import org.junit.Assert;
+import org.junit.Test;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.logging.Logger;
 
-// Implement the interface of EventHeaderSerializer for testing
-public class TestEventHeaderSerializer implements EventHeaderSerializer {
+// Implement the interface of EventBodyBuilder for testing
+public class TestEventBodyBuilder implements EventBodyBuilder {
 
     @Override
-    public Map<String, Object> serializeEventHeader(HttpEventCollectorEventInfo eventInfo, Map<String, Object> metadata) {
-        metadata.put(MetadataTags.SOURCE, "user_source");
-        return metadata;
+    public Object buildEventBody(
+            final HttpEventCollectorEventInfo eventInfo,
+            final Object formattedMessage
+    ) {
+        return "user-prefix:" + formattedMessage.toString();
     }
 }
 

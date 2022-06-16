@@ -80,9 +80,9 @@ package com.splunk.logging;
  * com.splunk.logging.HttpEventCollectorLoggingHandler.send_mode=sequential
  */
 
-import com.splunk.logging.hec.MetadataTags;
-
-import java.util.*;
+import java.util.Dictionary;
+import java.util.Hashtable;
+import java.util.Locale;
 import java.util.logging.Handler;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
@@ -110,31 +110,25 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
     private final String SendModeTag = "send_mode";
     private final String MiddlewareTag = "middleware";
 
-    private final String ConnectTimeoutConfTag = "connect_timeout";
-    private final String CallTimeoutConfTag = "call_timeout";
-    private final String ReadTimeoutConfTag = "read_timeout";
-    private final String WriteTimeoutConfTag = "write_timeout";
-    private final String TerminationTimeoutConfTag = "termination_timeout";
-
     /** HttpEventCollectorLoggingHandler c-or */
     public HttpEventCollectorLoggingHandler() {
         // read configuration settings
-        Map<String, String> metadata = new HashMap<>();
-        metadata.put(MetadataTags.HOST,
-                getConfigurationProperty(MetadataTags.HOST, null));
+        Dictionary<String, String> metadata = new Hashtable<String, String>();
+        metadata.put(HttpEventCollectorSender.MetadataHostTag,
+                getConfigurationProperty(HttpEventCollectorSender.MetadataHostTag, ""));
 
-        metadata.put(MetadataTags.INDEX,
-                getConfigurationProperty(MetadataTags.INDEX, null));
+        metadata.put(HttpEventCollectorSender.MetadataIndexTag,
+                getConfigurationProperty(HttpEventCollectorSender.MetadataIndexTag, ""));
 
-        metadata.put(MetadataTags.SOURCE,
-                getConfigurationProperty(MetadataTags.SOURCE, null));
+        metadata.put(HttpEventCollectorSender.MetadataSourceTag,
+                getConfigurationProperty(HttpEventCollectorSender.MetadataSourceTag, ""));
 
-        metadata.put(MetadataTags.SOURCETYPE,
-                getConfigurationProperty(MetadataTags.SOURCETYPE, null));
-
+        metadata.put(HttpEventCollectorSender.MetadataSourceTypeTag,
+                getConfigurationProperty(HttpEventCollectorSender.MetadataSourceTypeTag, ""));
+        
         // Extract message format value
-        metadata.put(MetadataTags.MESSAGEFORMAT,
-            getConfigurationProperty(MetadataTags.MESSAGEFORMAT, null));
+        metadata.put(HttpEventCollectorSender.MetadataMessageFormatTag,
+            getConfigurationProperty(HttpEventCollectorSender.MetadataMessageFormatTag, ""));
 
         // http event collector endpoint properties
         String url = getConfigurationProperty(UrlConfTag, null);
@@ -143,10 +137,10 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
         String token = getConfigurationProperty("token", null);
 
         //app channel
-        String channel = getConfigurationProperty("channel", null);
+        String channel = getConfigurationProperty("channel", "");
 
         //app type
-        String type = getConfigurationProperty("type", null);
+        String type = getConfigurationProperty("type", "");
 
         // batching properties
         long delay = getConfigurationNumericProperty(BatchDelayConfTag, HttpEventCollectorSender.DefaultBatchInterval);
@@ -154,35 +148,16 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
         long batchSize = getConfigurationNumericProperty(BatchSizeConfTag, HttpEventCollectorSender.DefaultBatchSize);
         long retriesOnError = getConfigurationNumericProperty(RetriesOnErrorTag, 0);
         String sendMode = getConfigurationProperty(SendModeTag, "sequential");
-        String eventHeaderSerializer = getConfigurationProperty("eventHeaderSerializer", "");
-        String middleware = getConfigurationProperty(MiddlewareTag, null);
-        String eventBodySerializer = getConfigurationProperty("eventBodySerializer", null);
-        String errorCallbackClass = getConfigurationProperty("errorCallback", null);
+        String middleware = getConfigurationProperty(MiddlewareTag, "");
+        String eventBodyBuilder = getConfigurationProperty("eventBodyBuilder", "");
 
         includeLoggerName = getConfigurationBooleanProperty(IncludeLoggerNameConfTag, true);
         includeThreadName = getConfigurationBooleanProperty(IncludeThreadNameConfTag, true);
         includeException = getConfigurationBooleanProperty(IncludeExceptionConfTag, true);
 
-        HttpEventCollectorSender.TimeoutSettings timeoutSettings = new HttpEventCollectorSender.TimeoutSettings(
-            getConfigurationNumericProperty(ConnectTimeoutConfTag, HttpEventCollectorSender.TimeoutSettings.DEFAULT_CONNECT_TIMEOUT),
-            getConfigurationNumericProperty(CallTimeoutConfTag, HttpEventCollectorSender.TimeoutSettings.DEFAULT_CALL_TIMEOUT),
-            getConfigurationNumericProperty(ReadTimeoutConfTag, HttpEventCollectorSender.TimeoutSettings.DEFAULT_READ_TIMEOUT),
-            getConfigurationNumericProperty(WriteTimeoutConfTag, HttpEventCollectorSender.TimeoutSettings.DEFAULT_WRITE_TIMEOUT),
-            getConfigurationNumericProperty(TerminationTimeoutConfTag, HttpEventCollectorSender.TimeoutSettings.DEFAULT_TERMINATION_TIMEOUT)
-        );
-
-        if ("raw".equalsIgnoreCase(type)) {
-            if (batchCount != HttpEventCollectorSender.DefaultBatchCount
-                        || batchSize != HttpEventCollectorSender.DefaultBatchSize
-                        || delay != HttpEventCollectorSender.DefaultBatchInterval) {
-                throw new IllegalArgumentException("Batching configuration and sending type of raw are incompatible.");
-            }
-            batchCount = 1;
-        }
-
         // delegate all configuration params to event sender
         this.sender = new HttpEventCollectorSender(
-                url, token, channel, type, delay, batchCount, batchSize, sendMode, metadata, timeoutSettings);
+                url, token, channel, type, delay, batchCount, batchSize, sendMode, metadata);
 
         // plug a user middleware
         if (middleware != null && !middleware.isEmpty()) {
@@ -191,33 +166,14 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
             } catch (Exception ignored) {}
         }
 
-        if (eventBodySerializer != null && !eventBodySerializer.isEmpty()) {
+        if (eventBodyBuilder != null && !eventBodyBuilder.isEmpty()) {
             try {
-                this.sender.setEventBodySerializer((EventBodySerializer) Class.forName(eventBodySerializer).newInstance());
+                this.sender.setEventBodyBuilder((EventBodyBuilder) Class.forName(eventBodyBuilder).newInstance());
             } catch (final Exception ex) {
-                //output error msg but not fail, it will default to use the default EventBodySerializer
+                //output error msg but not fail, it will default to use the default EventBodyBuilder
                 System.out.println(ex);
             }
         }
-
-        if (eventHeaderSerializer != null && !eventHeaderSerializer.isEmpty()) {
-            try {
-                this.sender.setEventHeaderSerializer((EventHeaderSerializer) Class.forName(eventHeaderSerializer).newInstance());
-            } catch (final Exception ex) {
-                //output error msg but not fail, it will default to use the default EventHeaderSerializer
-                System.out.println(ex);
-            }
-        }
-
-        if (errorCallbackClass != null && !errorCallbackClass.isEmpty()) {
-            try {
-                HttpEventCollectorErrorHandler.registerClassName(errorCallbackClass);
-            } catch (final Exception ex) {
-                //output error msg but not fail, it will default to use the default EventHeaderSerializer
-                System.out.println(ex);
-            }
-        }
-
 
         // plug retries middleware
         if (retriesOnError > 0) {
@@ -236,7 +192,6 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
     @Override
     public void publish(LogRecord record) {
         this.sender.send(
-        		record.getMillis(),
                 record.getLevel().toString(),
                 record.getMessage(),
                 includeLoggerName ? record.getLoggerName() : null,
@@ -275,6 +230,10 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
         if (value == null) {
             value = defaultValue;
         }
+        if (value == null) {
+            throw new IllegalArgumentException(String.format(
+                    "Configuration property %s is missing", property));
+        }
         return value;
     }
 
@@ -286,7 +245,7 @@ public final class HttpEventCollectorLoggingHandler extends Handler {
 
     private boolean getConfigurationBooleanProperty(
             final String property, boolean defaultValue) {
-        return Boolean.parseBoolean(
+        return Boolean.valueOf(
                 getConfigurationProperty(property, String.valueOf(defaultValue)));
     }
 }

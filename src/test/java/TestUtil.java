@@ -17,17 +17,16 @@
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import com.google.gson.*;
 import com.splunk.*;
 
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 import org.junit.Assert;
 import org.slf4j.*;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.LogManager;
@@ -44,67 +43,37 @@ public class TestUtil {
      * read splunk host info from .splunkrc file
      */
     private static void getSplunkHostInfo() throws IOException {
-        // .splunkrc overrides environment
 
         if (serviceArgs.isEmpty()) {
             //set default value
-            Map<String, String> environment = System.getenv();
-            serviceArgs.setUsername(environment.getOrDefault("SPLUNK_USER", "admin"));
-            serviceArgs.setPassword(environment.getOrDefault("SPLUNK_PASSWORD", "changed!"));
-            serviceArgs.setHost(environment.getOrDefault("SPLUNK_HOST", "localhost"));
-
+            serviceArgs.setUsername("admin");
+            serviceArgs.setPassword("changeme");
+            serviceArgs.setHost("localhost");
             serviceArgs.setPort(8089);
-            String environmentPort = environment.get("SPLUNK_ADMIN_PORT");
-            if (environmentPort != null) {
-                try {
-                    int parsedPort = Integer.parseInt(environmentPort);
-                } catch(NumberFormatException e) {
-                    // Use default set above
-                }
-            }
-
-            String environmentScheme = environment.get("SPLUNK_ADMIN_PROTOCOL");
-            if (environmentScheme != null) {
-                if ("https".equalsIgnoreCase(environmentScheme) || "http".equalsIgnoreCase(environmentScheme)) {
-                    serviceArgs.setScheme(environmentScheme.toLowerCase());
-                } else {
-                    throw new IOException("Unknown admin transport protocol '" + environmentScheme + "', expect http or https");
-                }
-            } else {
-                serviceArgs.setScheme("https");
-            }
-
-            String splunkUserEnv = System.getenv("SPLUNK_USER");
-            if (splunkUserEnv != null) {
-                serviceArgs.setUsername("SPLUNK_USER");
-            }
+            serviceArgs.setScheme("https");
 
             //update serviceArgs with customer splunk host info
             String splunkhostfile = System.getProperty("user.home") + File.separator + ".splunkrc";
-
-            Path configPath = new File(splunkhostfile).toPath();
-            if (Files.exists(configPath)) {
-                List<String> lines = Files.readAllLines(configPath, Charset.defaultCharset());
-                for (String line : lines) {
-                    if (line.toLowerCase().contains("host=")) {
-                        serviceArgs.setHost(line.split("=")[1]);
-                    }
-                    if (line.toLowerCase().contains("admin=")) {
-                        serviceArgs.setUsername(line.split("=")[1]);
-                    }
-                    if (line.toLowerCase().contains("password=")) {
-                        serviceArgs.setPassword(line.split("=")[1]);
-                    }
-                    if (line.toLowerCase().contains("scheme=")) {
-                        serviceArgs.setScheme(line.split("=")[1]);
-                    }
-                    if (line.toLowerCase().contains("port=")) {
-                        serviceArgs.setPort(Integer.parseInt(line.split("=")[1]));
-                    }
+            List<String> lines = Files.readAllLines(new File(splunkhostfile).toPath(), Charset.defaultCharset());
+            for (String line : lines) {
+                if (line.toLowerCase().contains("host=")) {
+                    serviceArgs.setHost(line.split("=")[1]);
+                }
+                if (line.toLowerCase().contains("admin=")) {
+                    serviceArgs.setUsername(line.split("=")[1]);
+                }
+                if (line.toLowerCase().contains("password=")) {
+                    serviceArgs.setPassword(line.split("=")[1]);
+                }
+                if (line.toLowerCase().contains("scheme=")) {
+                    serviceArgs.setScheme(line.split("=")[1]);
+                }
+                if (line.toLowerCase().contains("port=")) {
+                    serviceArgs.setPort(Integer.parseInt(line.split("=")[1]));
                 }
             }
         }
-        // Use TLSv1 instead of SSLv3
+        // Use TLSv1 intead of SSLv3
         serviceArgs.setSSLSecurityProtocol(SSLSecurityProtocol.TLSv1_2);
     }
 
@@ -166,7 +135,7 @@ public class TestUtil {
         enableHttpEventCollector();
 
         //create an httpEventCollector
-        Map<String, Object> args = new HashMap<>();
+        Map args = new HashMap();
         args.put("name", httpEventCollectorName);
         args.put("description", "test http event collector");
 
@@ -177,9 +146,9 @@ public class TestUtil {
         assert msg.getStatus() == 201;
 
         //get httpEventCollector token
-        args = new HashMap<>();
+        args = new HashMap();
         ResponseMessage response = service.get(httpEventCollectorTokenEndpointPath + "/" + httpEventCollectorName, args);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(response.getContent(), StandardCharsets.UTF_8));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(response.getContent(), "UTF-8"));
         String token = "";
         while (true) {
             String line = reader.readLine();
@@ -416,15 +385,10 @@ public class TestUtil {
             int eventCount = 0;
             InputStream resultsStream = null;
             ResultsReaderXml resultsReader = null;
-            Object parsedObject;
-            try {
-                parsedObject = JsonParser.parseString(msg);
-            } catch (JsonSyntaxException e) {
-                parsedObject = msg;
-            }
+            final Object parsedObject = JSONValue.parse(msg);
             while (System.currentTimeMillis() - startTime < 30 * 1000)/*wait for up to 30s*/ {
-                if (parsedObject instanceof JsonObject) {
-                    resultsStream = searchJsonMessageEvent((JsonObject) parsedObject);
+                if (parsedObject instanceof JSONObject) {
+                    resultsStream = searchJsonMessageEvent((JSONObject) parsedObject);
                 } else {
                     resultsStream = service.oneshotSearch("search " + msg);
                 }
@@ -458,21 +422,20 @@ public class TestUtil {
      * @return the input stream linked with the search result
      */
     @SuppressWarnings("rawtypes")
-    private static InputStream searchJsonMessageEvent(final JsonObject jsonObject) {
-        StringBuilder searchQuery = new StringBuilder();
+    private static InputStream searchJsonMessageEvent(final JSONObject jsonObject) {
+        String searchQuery = "";
         boolean firstSearchTerm = true;
         for (final Object entryObject : jsonObject.entrySet()) {
             final Entry jsonEntry = (Entry) entryObject;
             if (firstSearchTerm) {
-                searchQuery.append(String.format("search \"message.%s\"=%s", jsonEntry.getKey(), jsonEntry.getValue()));
+                searchQuery += String.format("search \"message.%s\"=%s", jsonEntry.getKey(), jsonEntry.getValue());
                 firstSearchTerm = false;
             } else {
-                searchQuery.append(String.format(" | search \"message.%s\"=%s", jsonEntry.getKey(), jsonEntry.getValue()));
+                searchQuery += String.format(" | search \"message.%s\"=%s", jsonEntry.getKey(), jsonEntry.getValue());
             }
         }
-        System.err.println(searchQuery.toString());
 
-        return service.oneshotSearch(searchQuery.toString());
+        return service.oneshotSearch(searchQuery);
     }
 
     public static void verifyEventsSentInOrder(String prefix, int totalEventsCount, String index) throws IOException {
@@ -508,8 +471,8 @@ public class TestUtil {
                     String.format("expect: %s, actual: %s", expect, results.get(i));
         }
     }
-
-
+    
+    
     /**
      * Builds user input map using specified parameters.
      *

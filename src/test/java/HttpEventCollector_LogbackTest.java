@@ -14,15 +14,12 @@
  * under the License.
  */
 
-import java.rmi.server.ExportException;
 import java.util.*;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import com.splunk.logging.HttpEventCollectorErrorHandler;
 import com.splunk.logging.HttpEventCollectorEventInfo;
 
-import org.apache.commons.lang3.StringUtils;
+import org.json.simple.JSONObject;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -31,8 +28,8 @@ import org.slf4j.LoggerFactory;
 public final class HttpEventCollector_LogbackTest {
 
     private String httpEventCollectorName = "LogbackTest";
-    List<List<HttpEventCollectorEventInfo>> errors = new ArrayList<>();
-    List<Exception> logEx = new ArrayList<>();
+    List<List<HttpEventCollectorEventInfo>> errors = new ArrayList<List<HttpEventCollectorEventInfo>>();
+    List<HttpEventCollectorErrorHandler.ServerErrorException> logEx = new ArrayList<HttpEventCollectorErrorHandler.ServerErrorException>();
 
     /**
      * sending a message via httplogging using logback to splunk
@@ -261,10 +258,8 @@ public final class HttpEventCollector_LogbackTest {
         System.out.println("======print logEx");
         System.out.println(logEx.toString());
         System.out.println("======finish print logEx");
-        // in this case expect a valid http reply with a json error message
-        HttpEventCollectorErrorHandler.ServerErrorException serverErrorException = (HttpEventCollectorErrorHandler.ServerErrorException) logEx.get(1);
-        Assert.assertEquals("Invalid token", serverErrorException.getErrorText());
-        Assert.assertEquals(4, serverErrorException.getErrorCode());
+        Assert.assertEquals("Invalid token", logEx.get(1).getErrorText());
+        Assert.assertEquals(4, logEx.get(1).getErrorCode());
 
 
         for (List<HttpEventCollectorEventInfo> infos : errors) {
@@ -289,7 +284,7 @@ public final class HttpEventCollector_LogbackTest {
             public void error(final List<HttpEventCollectorEventInfo> data, final Exception ex) {
                 synchronized (errors) {
                     errors.add(data);
-                    logEx.add(ex);
+                    logEx.add((HttpEventCollectorErrorHandler.ServerErrorException) ex);
                 }
             }
         });
@@ -325,7 +320,7 @@ public final class HttpEventCollector_LogbackTest {
         Assert.assertEquals(1, errors.size());
 
         System.out.println(logEx.toString());
-        if (!StringUtils.containsAny(logEx.toString(), "Failed to connect to", "Remote host terminated the handshake", "Connection reset"))
+        if (!(logEx.toString().contains("Connection refused") || logEx.toString().contains("Connection closed")))
             Assert.fail(String.format("Unexpected error message '%s'", logEx.toString()));
     }
 
@@ -394,30 +389,30 @@ public final class HttpEventCollector_LogbackTest {
 
         TestUtil.resetLogbackConfiguration("logback_template.xml", "logback.xml", userInputs);
 
-        final List<String> msgs = new ArrayList<>();
+        final List<String> msgs = new ArrayList<String>();
 
         final long timeMillsec = new Date().getTime();
 
-        final JsonObject jsonObject = new JsonObject();
-        jsonObject.add("transactionId", new JsonPrimitive("11"));
-        jsonObject.add("userId", new JsonPrimitive("21"));
-        jsonObject.add("eventTimestamp", new JsonPrimitive(timeMillsec));
+        final JSONObject jsonObject = new JSONObject();
+        jsonObject.put("transactionId", "11");
+        jsonObject.put("userId", "21");
+        jsonObject.put("eventTimestamp", timeMillsec);
 
         final Logger logger = LoggerFactory.getLogger(loggerName);
 
         // Test with a json event message
-        jsonObject.add("severity", new JsonPrimitive("info"));
+        jsonObject.put("severity", "info");
         final String infoJson = jsonObject.toString();
         logger.info(infoJson);
         msgs.add(infoJson);
 
-        jsonObject.add("severity", new JsonPrimitive("error"));
+        jsonObject.put("severity", "error");
         final String errorJson = jsonObject.toString();
         logger.error(errorJson);
         msgs.add(errorJson);
 
         // Test with a text event message
-        jsonObject.add("severity", new JsonPrimitive("debug"));
+        jsonObject.put("severity", "debug");
         final String debugText = String.format("{EventTimestamp:%s, EventMsg:'this is a test debug for Logback Test}", timeMillsec);
         logger.debug(debugText);
         msgs.add(debugText);
