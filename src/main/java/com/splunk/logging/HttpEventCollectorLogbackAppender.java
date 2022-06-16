@@ -1,4 +1,4 @@
-package com.splunk.logging;
+package com.toasttab.android.devicemanagement;
 /*
  * Copyright 2013-2015 Splunk, Inc.
  *
@@ -19,9 +19,14 @@ import ch.qos.logback.classic.pattern.MarkerConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import ch.qos.logback.core.Layout;
+import com.splunk.logging.HttpEventCollectorErrorHandler;
+import com.splunk.logging.HttpEventCollectorMiddleware;
+import com.splunk.logging.HttpEventCollectorResendMiddleware;
+import com.splunk.logging.HttpEventCollectorSender;
 import com.splunk.logging.hec.MetadataTags;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Logback Appender which writes its events to Splunk http event collector rest endpoint.
@@ -155,9 +160,10 @@ public class HttpEventCollectorLogbackAppender<E> extends AppenderBase<E> {
 
         MarkerConverter c = new MarkerConverter();
         if (this.started) {
-            logger.info("send batch")
+            Logger logger = Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+            logger.info("send batch");
             this.sender.send(
-            		event.getTimeStamp(),
+                    event.getTimeStamp(),
                     event.getLevel().toString(),
                     _layout.doLayout((E) event),
                     _includeLoggerName ? event.getLoggerName() : null,
